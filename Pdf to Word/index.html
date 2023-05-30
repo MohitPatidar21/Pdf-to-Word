@@ -1,0 +1,91 @@
+   <!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>PDF to Word Converter</title>
+  <!-- Load pdf.js library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.min.js"></script>
+  <!-- Load docx.js library -->
+  <script src="https://cdn.jsdelivr.net/npm/docx/build/Docx.js"></script>
+  <style>
+    /* Style for the conversion button */
+    #convert-button {
+      display: block;
+      margin: 20px auto;
+      padding: 10px 20px;
+      background-color: #007bff;
+      border: none;
+      border-radius: 5px;
+      color: #fff;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    /* Style for the output message */
+    #output-message {
+      margin-top: 20px;
+      font-size: 14px;
+    }
+
+   </style>
+</head>
+<body>
+  <h1>PDF to Word Converter</h1>
+  <input type="file" id="pdf-file-input">
+  <button id="convert-button">Convert to Word</button>
+  <div id="output-message"></div>
+  <script>
+    // Get references to the HTML elements
+    const pdfFileInput = document.getElementById('pdf-file-input');
+    const convertButton = document.getElementById('convert-button');
+    const outputMessage = document.getElementById('output-message');
+
+    // Attach a click event listener to the conversion button
+    convertButton.addEventListener('click', function() {
+      // Get the selected PDF file
+      const file = pdfFileInput.files[0];
+      if (!file) {
+        outputMessage.textContent = 'Please select a PDF file to convert.';
+        return;
+      }
+      outputMessage.textContent = 'Converting PDF to Word...';
+
+      // Use a FileReader object to read the PDF file
+      const reader = new FileReader();
+      reader.onload = function() {
+        const pdfData = new Uint8Array(reader.result);
+
+        // Use pdf.js library to extract the first page of the PDF file as a PNG image
+
+  pdfjsLib.getDocument(pdfData).promise.then(function(pdf) {
+          pdf.getPage(1).then(function(page) {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            const viewport = page.getViewport({scale: 1});
+            canvas.height = viewport.height;
+            canvas.width = viewport.width;
+            page.render({canvasContext: context, viewport: viewport}).promise.then(function() {
+              const pngData = canvas.toDataURL('image/png');
+
+              // Use docx.js library to create a Word document containing the PNG image
+              const docx = new window.docx();
+              const paragraph = docx.createParagraph();
+              const imageRun = paragraph.addImageRun(pngData);
+              docx.generate({type: 'blob'}).then(function(blob) {
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = 'converted.docx';
+                link.click();
+                outputMessage.textContent = 'Conversion complete!';
+              });
+            });
+          });
+        }).catch(function(error) {
+          console.log(error);
+          outputMessage.textContent = 'Error converting PDF to Word. Please try again later.';
+        });
+      };
+      reader.readAsArrayBuffer(file);
+    });
